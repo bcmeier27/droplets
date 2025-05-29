@@ -5,16 +5,102 @@
 
 -- if this app is started without any docs dropped onto it, it will prompt to choose a Word document
 
--- open ({"/Users/bernie/Desktop/test document.docx"})
-set chosenFiles to choose file with prompt "Please select a file to process:" of type {"com.microsoft.word.doc", "org.openxmlformats.wordprocessingml.document", "*.doc", "*.docx", "*.docm"} with multiple selections allowed
-open chosenFiles
+use AppleScript version "2.4" -- Yosemite (10.10) or later
+use framework "Foundation"
+use framework "AppKit"
+use scripting additions
+
+property NSAlert : a reference to current application's NSAlert
+property NSTextField : a reference to current application's NSTextField
+property NSButton : a reference to current application's NSButton
+property NSOnState : a reference to current application's NSOnState
+
+on run
+	-- Set up AppKit references
+	--set alert to NSAlert's alloc()'s init()
+	
+	-- open ({"/Users/bernie/Desktop/test document.docx"})
+	set chosenFiles to choose file with prompt "Please select a file to process:" of type {"com.microsoft.word.doc", "org.openxmlformats.wordprocessingml.document", "*.doc", "*.docx", "*.docm"} with multiple selections allowed
+	
+	open chosenFiles
+	
+end run
 
 on open droppedFiles
+	-- Create alert window
+	set alert to NSAlert's alloc()'s init()
+	alert's setMessageText:"Bible Verse Hyperlink Insertion (MS Word)"
+	alert's setInformativeText:"Please enter values for Source and Target Bible versions, and select how to process the links."
+	
+	-- Create input fields
+	set l1 to NSTextField's alloc()'s initWithFrame:{{0, 90}, {300, 24}}
+	l1's setStringValue:"Source:"
+	l1's setEditable:false
+	l1's setSelectable:false
+	l1's setBezeled:false
+	l1's setDrawsBackground:false
+	
+	set inputFieldA to NSTextField's alloc()'s initWithFrame:{{60, 90}, {350, 24}}
+	inputFieldA's setStringValue:"NASB"
+	
+	set l2 to NSTextField's alloc()'s initWithFrame:{{0, 60}, {300, 24}}
+	l2's setStringValue:"Target:"
+	l2's setEditable:false
+	l2's setSelectable:false
+	l2's setBezeled:false
+	l2's setDrawsBackground:false
+	
+	set inputFieldB to NSTextField's alloc()'s initWithFrame:{{60, 60}, {350, 24}}
+	inputFieldB's setStringValue:"SCH2000"
+	
+	-- Create checkbox
+	set checkbox1 to NSButton's alloc()'s initWithFrame:{{0, 30}, {300, 24}}
+	checkbox1's setButtonType:(current application's NSSwitchButton)
+	checkbox1's setTitle:"Insert verse text (quoted, after hyperlink)"
+	checkbox1's setState:1
+	
+	-- Create checkbox
+	set checkbox2 to NSButton's alloc()'s initWithFrame:{{0, 0}, {300, 24}}
+	checkbox2's setButtonType:(current application's NSSwitchButton)
+	checkbox2's setTitle:"Insert Screen Tip (when hovering over link)"
+	checkbox2's setState:0
+	
+	-- Add controls to a view
+	set theView to current application's NSView's alloc()'s initWithFrame:{{0, 0}, {500, 120}}
+	theView's addSubview:l1
+	theView's addSubview:inputFieldA
+	theView's addSubview:l2
+	theView's addSubview:inputFieldB
+	theView's addSubview:checkbox1
+	theView's addSubview:checkbox2
+	
+	alert's setAccessoryView:theView
+	alert's addButtonWithTitle:"OK"
+	alert's addButtonWithTitle:"Cancel"
+	
+	-- Show the dialog
+	set response to alert's runModal()
+	if response = (current application's NSAlertSecondButtonReturn) then
+		display alert "User canceled."
+		return
+	end if
+	
+	-- Get values
+	set stringA to (inputFieldA's stringValue()) as text
+	set stringB to (inputFieldB's stringValue()) as text
+	set insertVerseText to (1 = (checkbox1's state()))
+	set insertScreenTip to (1 = (checkbox2's state()))
+	
+	-- Optional: Show result
+	--display dialog "StringA: " & stringA & return & "StringB: " & stringB & return & "Insert verse text: " & insertVerseText & return & "Insert screen tip: " & insertScreenTip buttons {"OK"} default button "OK"
+	
 	tell application "Microsoft Word"
 		
 		-- only make changes here --
-		set oldVersion to "NASB"
-		set newVersion to "SCH2000"
+		--set oldVersion to "NASB"
+		--set newVersion to "SCH2000"
+		set oldVersion to stringA
+		set newVersion to stringB
 		-- end of changes ----------
 		
 		repeat with aFile in droppedFiles
@@ -61,13 +147,19 @@ on open droppedFiles
 									set linkCount to linkCount + 1
 									
 									-- now insert fetched text into the document after the hyperlink's display text
-									set rangeAfter to text object of thisField
-									set startPos to (end of content of rangeAfter)
-									set endPos to startPos + 5 + (count of verseText)
-									set insertionPoint to collapse range rangeAfter direction collapse end
-									insert text (" - \"" & verseText & "\"") at insertionPoint
-									set newRange to create range theDoc start startPos end endPos
-									set italic of font object of newRange to true
+									if (insertVerseText) then
+										set rangeAfter to text object of thisField
+										set startPos to (end of content of rangeAfter)
+										set endPos to startPos + 5 + (count of verseText)
+										set insertionPoint to collapse range rangeAfter direction collapse end
+										insert text (" - \"" & verseText & "\"") at insertionPoint
+										set newRange to create range theDoc start startPos end endPos
+										set italic of font object of newRange to true
+									end if
+									
+									if (insertScreenTip) then
+										set the screen tip of thisField to verseText
+									end if
 								end if
 							end if
 						else
