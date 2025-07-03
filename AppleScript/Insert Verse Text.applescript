@@ -1,4 +1,5 @@
 -- AppleScript droplet by Bernie Meier 07-May-2025
+-- Version 2.1 - Copilot suggested change to on open to ensure it runs on main thread
 -- This app opens the dropped Word document to insert a few lines of the verse text 
 -- from any BibleGateway verse hyperlink found in the document
 -- it first changes the version reference from oldVersion to newVersion (see "make changes here")
@@ -27,6 +28,10 @@ on run
 end run
 
 on open droppedFiles
+	(current application's NSThread's mainThread())'s performSelectorOnMainThread_withObject_waitUntilDone_("processFilesOnMainThread:", droppedFiles, true)
+end open
+
+on processFilesOnMainThread_(droppedFiles)
 	-- Create alert window
 	set alert to NSAlert's alloc()'s init()
 	alert's setMessageText:"Bible Verse Hyperlink Insertion (MS Word)"
@@ -182,7 +187,7 @@ out of total links found: " & fieldCount & "
 *** DON`T FORGET TO SAVE THIS DOCUMENT! ***"
 		end repeat
 	end tell
-end open
+end processFilesOnMainThread_
 
 on replace_chars(this_text, search_string, replacement_string)
 	set AppleScript's text item delimiters to the search_string
